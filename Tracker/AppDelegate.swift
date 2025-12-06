@@ -3,8 +3,6 @@ import UIKit
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    // MARK: UISceneSession Lifecycle
-    
     func application(
        _ application: UIApplication,
        configurationForConnecting connectingSceneSession: UISceneSession,
