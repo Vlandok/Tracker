@@ -5,7 +5,7 @@ final class TrackersViewController: UIViewController {
     private var selectedDate: Date = Date()
     
     var categories: [TrackerCategory] = [TrackerCategory(title: "Важное", trackers: [])]
-    private let recordStore: TrackerRecordStore = InMemoryTrackerRecordStore.shared
+    var completedTrackers: [TrackerRecord] = []
     private var visible: [TrackerCategory] = []
     
     private lazy var addButton: UIBarButtonItem = {
@@ -144,11 +144,19 @@ final class TrackersViewController: UIViewController {
     }
     
     func markCompleted(tracker: Tracker, on date: Date) {
-        recordStore.add(trackerId: tracker.id, on: date)
+        let normalized = date.dayOnly
+        let record = TrackerRecord(trackerId: tracker.id, date: normalized)
+        guard completedTrackers.contains(where: { $0.trackerId == record.trackerId && Calendar.current.isDate($0.date, inSameDayAs: record.date) }) == false else {
+            return
+        }
+        completedTrackers.append(record)
     }
     
     func unmarkCompleted(tracker: Tracker, on date: Date) {
-        recordStore.remove(trackerId: tracker.id, on: date)
+        let normalized = date.dayOnly
+        completedTrackers.removeAll { record in
+            record.trackerId == tracker.id && Calendar.current.isDate(record.date, inSameDayAs: normalized)
+        }
     }
     
     private func updateUIForSelectedDate() {
@@ -255,11 +263,14 @@ extension TrackersViewController: UICollectionViewDelegate {}
 
 private extension TrackersViewController {
     func isCompleted(tracker: Tracker, on date: Date) -> Bool {
-        recordStore.contains(trackerId: tracker.id, on: date)
+        let day = date.dayOnly
+        return completedTrackers.contains { $0.trackerId == tracker.id && Calendar.current.isDate($0.date, inSameDayAs: day) }
     }
     
     func completionCount(for tracker: Tracker) -> Int {
-        recordStore.completionCount(for: tracker.id)
+        completedTrackers.reduce(0) { acc, record in
+            acc + (record.trackerId == tracker.id ? 1 : 0)
+        }
     }
     
     func isFutureSelectedDate() -> Bool {

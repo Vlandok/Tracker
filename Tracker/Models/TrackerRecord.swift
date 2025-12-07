@@ -14,6 +14,3 @@ struct TrackerRecord: Hashable {
         Calendar.current.isDate(lhs.date, inSameDayAs: rhs.date)
     }
 }
-
-
-

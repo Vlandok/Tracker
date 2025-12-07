@@ -11,7 +11,7 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
     private let nameLimit: Int = 38
     
     private let nameField: UITextField = {
-        let field = UITextField()
+        let field = InsetClearTextField()
         field.placeholder = "Введите название трекера"
         field.font = .systemFont(ofSize: 17)
         field.textColor = UIColor(resource: .black)
@@ -376,5 +376,3 @@ extension CreateTrackerViewController: UITableViewDataSource, UITableViewDelegat
         return order.filter { set.contains($0) }.compactMap { map[$0] }.joined(separator: ", ")
     }
 }
-
-

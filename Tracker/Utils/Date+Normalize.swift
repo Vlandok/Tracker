@@ -5,5 +5,3 @@ extension Date {
         Calendar.current.startOfDay(for: self)
     }
 }
-
-

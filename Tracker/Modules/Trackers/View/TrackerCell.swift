@@ -163,6 +163,3 @@ final class TrackerSectionHeaderView: UICollectionReusableView {
         titleLabel.text = title
     }
 }
-
-
-

@@ -148,5 +148,3 @@ extension SchedulePickerViewController: UITableViewDataSource, UITableViewDelega
         }
     }
 }
-
-

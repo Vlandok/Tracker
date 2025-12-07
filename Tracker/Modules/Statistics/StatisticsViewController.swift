@@ -19,5 +19,3 @@ final class StatisticsViewController: UIViewController {
         ])
     }
 }
-
-
