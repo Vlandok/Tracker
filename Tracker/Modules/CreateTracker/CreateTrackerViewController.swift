@@ -435,7 +435,7 @@ extension CreateTrackerViewController: UITableViewDataSource, UITableViewDelegat
         cell.selectionStyle = .default
         cell.backgroundColor = .clear
         var bg = UIBackgroundConfiguration.listGroupedCell()
-        bg.backgroundColor = .secondarySystemBackground
+        bg.backgroundColor = UIColor(resource: .background)
         bg.cornerRadius = 16
         cell.backgroundConfiguration = bg
         var content = cell.defaultContentConfiguration()
