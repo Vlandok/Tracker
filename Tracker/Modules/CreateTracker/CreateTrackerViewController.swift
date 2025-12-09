@@ -93,6 +93,37 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
     private var selectedWeekdays: Set<Weekday> = []
     private var selectedCategoryTitle: String = "Важное"
     private var tableHeaderContainer: UIView?
+ 
+    private var selectionCollectionView: UICollectionView!
+    private var selectionHeightConstraint: NSLayoutConstraint?
+    private var selectedEmojiIndexPath: IndexPath?
+    private var selectedColorIndexPath: IndexPath?
+    
+    private let allEmojis: [String] = ["🙂","😻","🌺","🐶","❤️","😱",
+                                       "😇","😡","🥶","🤔","🙌","🍔",
+                                       "🥦","🏓","🥇","🎸","🏝","😪"]
+    private let allColors: [UIColor] = [
+        UIColor(resource: .сolorSelection1),
+        UIColor(resource: .сolorSelection2),
+        UIColor(resource: .сolorSelection3),
+        UIColor(resource: .сolorSelection4),
+        UIColor(resource: .сolorSelection5),
+        UIColor(resource: .сolorSelection6),
+        UIColor(resource: .сolorSelection7),
+        UIColor(resource: .сolorSelection8),
+        UIColor(resource: .сolorSelection9),
+        UIColor(resource: .сolorSelection10),
+        UIColor(resource: .сolorSelection11),
+        UIColor(resource: .сolorSelection12),
+        UIColor(resource: .сolorSelection13),
+        UIColor(resource: .сolorSelection14),
+        UIColor(resource: .сolorSelection15),
+        UIColor(resource: .сolorSelection16),
+        UIColor(resource: .сolorSelection17),
+        UIColor(resource: .сolorSelection18)
+    ]
+    private var selectedEmoji: String?
+    private var selectedColor: UIColor?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -116,6 +147,7 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
         setupKeyboardHandling()
         setupTapToDismiss()
         configureTableHeader()
+        configureTableFooter()
     }
     
     deinit {
@@ -186,6 +218,79 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
             header.frame = frame
             tableView.tableHeaderView = header
         }
+    }
+    
+    private func configureTableFooter() {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.backgroundColor = .clear
+        
+        let selectionView = makeSelectionCollection()
+        container.addSubview(selectionView)
+        NSLayoutConstraint.activate([
+            selectionView.topAnchor.constraint(equalTo: container.topAnchor, constant: 16),
+            selectionView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
+            selectionView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -16),
+            selectionView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: 16)
+        ])
+        
+        let width = tableView.bounds.width
+        let footer = UIView(frame: CGRect(x: 0, y: 0, width: width, height: 1))
+        footer.addSubview(container)
+        container.leadingAnchor.constraint(equalTo: footer.leadingAnchor).isActive = true
+        container.trailingAnchor.constraint(equalTo: footer.trailingAnchor).isActive = true
+        container.topAnchor.constraint(equalTo: footer.topAnchor).isActive = true
+        container.bottomAnchor.constraint(equalTo: footer.bottomAnchor).isActive = true
+        
+        tableView.tableFooterView = footer
+        let targetSize = CGSize(width: tableView.bounds.width, height: UIView.layoutFittingCompressedSize.height)
+        let height = container.systemLayoutSizeFitting(targetSize,
+                                                       withHorizontalFittingPriority: .required,
+                                                       verticalFittingPriority: .fittingSizeLevel).height
+        var frame = footer.frame
+        frame.size.height = height
+        footer.frame = frame
+        tableView.tableFooterView = footer
+    }
+    
+    private func makeSelectionCollection() -> UIView {
+        let layout = UICollectionViewCompositionalLayout { [weak self] section, env in
+            guard let self = self else { return nil }
+            let isEmoji = (section == 0)
+            let itemSide: CGFloat = 52
+            let itemSize = NSCollectionLayoutSize(widthDimension: .absolute(itemSide), heightDimension: .absolute(itemSide))
+            let item = NSCollectionLayoutItem(layoutSize: itemSize)
+            let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(itemSide))
+            let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitem: item, count: 6)
+            group.interItemSpacing = .fixed(5)
+            let sectionLayout = NSCollectionLayoutSection(group: group)
+            sectionLayout.interGroupSpacing = 0
+            let headerSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(40))
+            let header = NSCollectionLayoutBoundarySupplementaryItem(layoutSize: headerSize, elementKind: UICollectionView.elementKindSectionHeader, alignment: .top)
+            sectionLayout.boundarySupplementaryItems = [header]
+            sectionLayout.contentInsets = NSDirectionalEdgeInsets(top: 24, leading: 0, bottom: 24, trailing: 0)
+            return sectionLayout
+        }
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.backgroundColor = .clear
+        cv.isScrollEnabled = false
+        cv.translatesAutoresizingMaskIntoConstraints = false
+        cv.dataSource = self
+        cv.delegate = self
+        cv.register(EmojiCell.self, forCellWithReuseIdentifier: "EmojiCell")
+        cv.register(ColorCell.self, forCellWithReuseIdentifier: "ColorCell")
+        cv.register(TitleHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: "TitleHeader")
+        selectionCollectionView = cv
+        
+        let emojiRows = CGFloat((allEmojis.count + 5) / 6)
+        let colorRows = CGFloat((allColors.count + 5) / 6)
+        let headerH: CGFloat = 40
+        let inset: CGFloat = 24
+        // total height = (header + topInset + rowsHeight + bottomInset) for each section
+        let totalHeight = (headerH + inset + emojiRows * 52 + inset) + (headerH + inset + colorRows * 52 + inset)
+        selectionHeightConstraint = cv.heightAnchor.constraint(equalToConstant: totalHeight)
+        selectionHeightConstraint?.isActive = true
+        return cv
     }
     
     @objc
@@ -266,7 +371,9 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
         let nameValid = (trimmed.isEmpty == false) && (trimmed.count <= nameLimit)
         let categorySelected = (selectedCategoryTitle.isEmpty == false)
         let scheduleSelected = selectedWeekdays.isEmpty == false
-        let canCreate = nameValid && categorySelected && scheduleSelected
+        let emojiSelected = (selectedEmoji != nil)
+        let colorSelected = (selectedColor != nil)
+        let canCreate = nameValid && categorySelected && scheduleSelected && emojiSelected && colorSelected
         createButton.isEnabled = canCreate
         createButton.backgroundColor = canCreate ? UIColor(resource: .black) : UIColor(resource: .gray)
     }
@@ -297,13 +404,8 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
         let name = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard name.isEmpty == false else { return }
         
-        let emojis = ["🙂","😀","😅","🥳","🤩","😎","🥰","😺","🍀","🌟","🔥","❤️","🎯","🏃‍♂️","🧘‍♂️","📚","🎵","🚴‍♂️","🌤️","🌙"]
-        let colors: [UIColor] = [
-            .systemGreen, .systemOrange, .systemRed, .systemBlue,
-            .systemPurple, .systemTeal, .systemPink, .systemIndigo
-        ]
-        let chosenEmoji = emojis.randomElement() ?? "🙂"
-        let chosenColor = colors.randomElement() ?? UIColor.systemBlue
+        let chosenEmoji = selectedEmoji ?? allEmojis.randomElement() ?? "🙂"
+        let chosenColor = selectedColor ?? allColors.randomElement() ?? UIColor.systemBlue
         
         let tracker = Tracker(
             id: UUID(),
@@ -323,6 +425,8 @@ extension CreateTrackerViewController: UITableViewDataSource, UITableViewDelegat
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 2 }
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat { CGFloat.leastNormalMagnitude }
     func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat { CGFloat.leastNormalMagnitude }
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? { UIView(frame: .zero) }
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? { UIView(frame: .zero) }
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat { 75 }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -331,7 +435,7 @@ extension CreateTrackerViewController: UITableViewDataSource, UITableViewDelegat
         cell.selectionStyle = .default
         cell.backgroundColor = .clear
         var bg = UIBackgroundConfiguration.listGroupedCell()
-        bg.backgroundColor = .secondarySystemBackground
+        bg.backgroundColor = UIColor(resource: .background)
         bg.cornerRadius = 16
         cell.backgroundConfiguration = bg
         var content = cell.defaultContentConfiguration()
@@ -374,5 +478,60 @@ extension CreateTrackerViewController: UITableViewDataSource, UITableViewDelegat
             .friday: "Пт", .saturday: "Сб", .sunday: "Вс"
         ]
         return order.filter { set.contains($0) }.compactMap { map[$0] }.joined(separator: ", ")
+    }
+}
+
+extension CreateTrackerViewController: UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        if section == 0 { return allEmojis.count }
+        return allColors.count
+    }
+    
+    func numberOfSections(in collectionView: UICollectionView) -> Int { 2 }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        if indexPath.section == 0 {
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "EmojiCell", for: indexPath) as! EmojiCell
+            let emoji = allEmojis[indexPath.item]
+            let selected = (indexPath == selectedEmojiIndexPath)
+            cell.configure(emoji: emoji, selected: selected)
+            return cell
+        } else {
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ColorCell", for: indexPath) as! ColorCell
+            let color = allColors[indexPath.item]
+            let selected = (indexPath == selectedColorIndexPath)
+            cell.configure(color: color, selected: selected)
+            return cell
+        }
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        if indexPath.section == 0 {
+            let prev = selectedEmojiIndexPath
+            selectedEmojiIndexPath = indexPath
+            selectedEmoji = allEmojis[indexPath.item]
+            var reload: [IndexPath] = [indexPath]
+            if let p = prev { reload.append(p) }
+            collectionView.reloadItems(at: reload)
+            updateCreateButtonState()
+        } else {
+            let prev = selectedColorIndexPath
+            selectedColorIndexPath = indexPath
+            selectedColor = allColors[indexPath.item]
+            var reload: [IndexPath] = [indexPath]
+            if let p = prev { reload.append(p) }
+            collectionView.reloadItems(at: reload)
+            updateCreateButtonState()
+        }
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+        let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "TitleHeader", for: indexPath) as! TitleHeaderView
+        header.setTitle(indexPath.section == 0 ? "Emoji" : "Цвет")
+        return header
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
+        return CGSize(width: collectionView.bounds.width, height: 24)
     }
 }

@@ -4,9 +4,22 @@ final class TrackersViewController: UIViewController {
     
     private var selectedDate: Date = Date()
     
-    var categories: [TrackerCategory] = [TrackerCategory(title: "Важное", trackers: [])]
-    var completedTrackers: [TrackerRecord] = []
+    private var categories: [TrackerCategory] = []
     private var visible: [TrackerCategory] = []
+    
+    private lazy var container = (UIApplication.shared.delegate as? AppDelegate)?.persistentContainer
+    private lazy var trackerStore: TrackerStore? = {
+        guard let c = container else { return nil }
+        return TrackerStore(container: c)
+    }()
+    private lazy var categoryStore: TrackerCategoryStore? = {
+        guard let c = container else { return nil }
+        return TrackerCategoryStore(container: c)
+    }()
+    private lazy var recordStore: TrackerRecordStore? = {
+        guard let c = container else { return nil }
+        return TrackerRecordStore(container: c)
+    }()
     
     private lazy var addButton: UIBarButtonItem = {
         let item = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(onAddTapped))
@@ -87,6 +100,8 @@ final class TrackersViewController: UIViewController {
         definesPresentationContext = true
         layoutCollection()
         layoutEmptyState()
+        startObservingStores()
+        reloadFromStore()
         updateUIForSelectedDate()
     }
     
@@ -126,37 +141,22 @@ final class TrackersViewController: UIViewController {
     @objc
     private func onDateChanged(_ sender: UIDatePicker) {
         selectedDate = sender.date
+        try? recordStore?.startObservingForDay(selectedDate) { [weak self] in
+            self?.collectionView.reloadData()
+        }
         updateUIForSelectedDate()
     }
     
     func addTracker(_ tracker: Tracker, to categoryTitle: String) {
-        if let index = categories.firstIndex(where: { $0.title == categoryTitle }) {
-            let existing = categories[index]
-            let updatedCategory = TrackerCategory(title: existing.title, trackers: existing.trackers + [tracker])
-            var newCategories = categories
-            newCategories[index] = updatedCategory
-            categories = newCategories
-        } else {
-            let newCategory = TrackerCategory(title: categoryTitle, trackers: [tracker])
-            categories = categories + [newCategory]
-        }
-        updateUIForSelectedDate()
+        try? trackerStore?.create(tracker: tracker, categoryTitle: categoryTitle)
     }
     
     func markCompleted(tracker: Tracker, on date: Date) {
-        let normalized = date.dayOnly
-        let record = TrackerRecord(trackerId: tracker.id, date: normalized)
-        guard completedTrackers.contains(where: { $0.trackerId == record.trackerId && Calendar.current.isDate($0.date, inSameDayAs: record.date) }) == false else {
-            return
-        }
-        completedTrackers.append(record)
+        try? recordStore?.add(trackerId: tracker.id, on: date)
     }
     
     func unmarkCompleted(tracker: Tracker, on date: Date) {
-        let normalized = date.dayOnly
-        completedTrackers.removeAll { record in
-            record.trackerId == tracker.id && Calendar.current.isDate(record.date, inSameDayAs: normalized)
-        }
+        try? recordStore?.remove(trackerId: tracker.id, on: date)
     }
     
     private func updateUIForSelectedDate() {
@@ -172,9 +172,23 @@ final class TrackersViewController: UIViewController {
                 tracker.schedule.isEmpty || tracker.schedule.contains(weekday)
             }
             guard trackersForDay.isEmpty == false else { return nil }
-            return TrackerCategory(title: category.title, trackers: trackersForDay)
+            return TrackerCategory(id: category.id, title: category.title, trackers: trackersForDay)
         }
         return filtered
+    }
+    
+    private func startObservingStores() {
+        try? trackerStore?.startObserving { [weak self] in
+            self?.reloadFromStore()
+            self?.updateUIForSelectedDate()
+        }
+        try? recordStore?.startObservingForDay(selectedDate) { [weak self] in
+            self?.collectionView.reloadData()
+        }
+    }
+    
+    private func reloadFromStore() {
+        categories = (try? trackerStore?.fetchAllGroupedByCategory()) ?? []
     }
     
     private func weekday(for date: Date) -> Weekday {
@@ -263,14 +277,11 @@ extension TrackersViewController: UICollectionViewDelegate {}
 
 private extension TrackersViewController {
     func isCompleted(tracker: Tracker, on date: Date) -> Bool {
-        let day = date.dayOnly
-        return completedTrackers.contains { $0.trackerId == tracker.id && Calendar.current.isDate($0.date, inSameDayAs: day) }
+        (try? recordStore?.isCompleted(trackerId: tracker.id, on: date)) ?? false
     }
     
     func completionCount(for tracker: Tracker) -> Int {
-        completedTrackers.reduce(0) { acc, record in
-            acc + (record.trackerId == tracker.id ? 1 : 0)
-        }
+        (try? recordStore?.completionCount(for: tracker.id)) ?? 0
     }
     
     func isFutureSelectedDate() -> Bool {

@@ -3,8 +3,10 @@ import UIKit
 final class TrackerCell: UICollectionViewCell {
     static let reuseId = "TrackerCell"
     
+    // MARK: - Callbacks
     var onToggle: (() -> Void)?
     
+    // MARK: - UI
     private let cardView: UIView = {
         let view = UIView()
         view.layer.cornerRadius = 16
@@ -50,6 +52,7 @@ final class TrackerCell: UICollectionViewCell {
         return button
     }()
     
+    // MARK: - Init
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupViews()
@@ -59,6 +62,7 @@ final class TrackerCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
+    // MARK: - Setup
     private func setupViews() {
         contentView.addSubview(cardView)
         contentView.addSubview(daysLabel)
@@ -94,6 +98,7 @@ final class TrackerCell: UICollectionViewCell {
         ])
     }
     
+    // MARK: - Configuration
     func configure(with tracker: Tracker, isCompleted: Bool, totalCount: Int, isFutureDate: Bool) {
         cardView.backgroundColor = tracker.color
         emojiLabel.text = tracker.emoji
@@ -111,11 +116,13 @@ final class TrackerCell: UICollectionViewCell {
         toggleButton.alpha = isFutureDate ? 0.5 : 1.0
     }
     
+    // MARK: - Actions
     @objc
     private func onToggleTapped() {
         onToggle?()
     }
     
+    // MARK: - Helpers
     private static func daysText(_ count: Int) -> String {
         let mod10 = count % 10
         let mod100 = count % 100
@@ -134,6 +141,7 @@ final class TrackerCell: UICollectionViewCell {
 final class TrackerSectionHeaderView: UICollectionReusableView {
     static let reuseId = "TrackerSectionHeaderView"
     
+    // MARK: - UI
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 19, weight: .bold)
@@ -142,6 +150,7 @@ final class TrackerSectionHeaderView: UICollectionReusableView {
         return label
     }()
     
+    // MARK: - Init
     override init(frame: CGRect) {
         super.init(frame: frame)
         addSubview(titleLabel)
@@ -159,6 +168,7 @@ final class TrackerSectionHeaderView: UICollectionReusableView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    // MARK: - Configuration
     func setTitle(_ title: String) {
         titleLabel.text = title
     }
