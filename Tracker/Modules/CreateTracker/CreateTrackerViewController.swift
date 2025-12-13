@@ -9,6 +9,11 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
     weak var delegate: CreateTrackerViewControllerDelegate?
     
     private let nameLimit: Int = 38
+    private lazy var container = (UIApplication.shared.delegate as? AppDelegate)?.persistentContainer
+    private lazy var categoryStore: TrackerCategoryStore? = {
+        guard let container else { return nil }
+        return TrackerCategoryStore(container: container)
+    }()
     
     private let nameField: UITextField = {
         let field = InsetClearTextField()
@@ -91,7 +96,7 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
     }()
     
     private var selectedWeekdays: Set<Weekday> = []
-    private var selectedCategoryTitle: String = "Важное"
+    private var selectedCategoryTitle: String?
     private var tableHeaderContainer: UIView?
  
     private var selectionCollectionView: UICollectionView!
@@ -369,7 +374,7 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
         let raw = nameField.text ?? ""
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         let nameValid = (trimmed.isEmpty == false) && (trimmed.count <= nameLimit)
-        let categorySelected = (selectedCategoryTitle.isEmpty == false)
+        let categorySelected = (selectedCategoryTitle?.isEmpty == false)
         let scheduleSelected = selectedWeekdays.isEmpty == false
         let emojiSelected = (selectedEmoji != nil)
         let colorSelected = (selectedColor != nil)
@@ -379,11 +384,25 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
     }
 
     private func updateCategoryAndScheduleSubtitles() {
+        let paths = [
+            IndexPath(row: 0, section: 0),
+            IndexPath(row: 1, section: 0)
+        ]
+        tableView.reloadRows(at: paths, with: .none)
         updateCreateButtonState()
     }
     
     @objc
-    private func onCategoryTapped() {}
+    private func onCategoryTapped() {
+        guard let store = categoryStore else { return }
+        let viewModel = CategoryListViewModel(store: store, selected: selectedCategoryTitle)
+        let vc = CategoryListViewController(viewModel: viewModel)
+        vc.onCategorySelected = { [weak self] title in
+            self?.selectedCategoryTitle = title
+            self?.updateCategoryAndScheduleSubtitles()
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
     
     @objc
     private func onScheduleTapped() {
@@ -403,6 +422,7 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
     private func onCreateTapped() {
         let name = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard name.isEmpty == false else { return }
+        guard let categoryTitle = selectedCategoryTitle, categoryTitle.isEmpty == false else { return }
         
         let chosenEmoji = selectedEmoji ?? allEmojis.randomElement() ?? "🙂"
         let chosenColor = selectedColor ?? allColors.randomElement() ?? UIColor.systemBlue
@@ -414,7 +434,6 @@ final class CreateTrackerViewController: UIViewController, UIGestureRecognizerDe
             emoji: chosenEmoji,
             schedule: selectedWeekdays
         )
-        let categoryTitle = selectedCategoryTitle
         delegate?.createTrackerViewController(self, didCreate: tracker, in: categoryTitle)
         dismiss(animated: true)
     }
@@ -457,11 +476,11 @@ extension CreateTrackerViewController: UITableViewDataSource, UITableViewDelegat
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         if indexPath.row == 0 {
-            return
+            onCategoryTapped()
         } else {
             let vc = SchedulePickerViewController(initial: selectedWeekdays) { [weak self] newSet in
                 self?.selectedWeekdays = newSet
-                self?.tableView.reloadRows(at: [IndexPath(row: 1, section: 0)], with: .automatic)
+                self?.updateCategoryAndScheduleSubtitles()
             }
             navigationController?.pushViewController(vc, animated: true)
         }

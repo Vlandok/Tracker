@@ -32,9 +32,13 @@ final class TrackerCategoryStore {
         fetch.predicate = NSPredicate(format: "%K == %@", #keyPath(TrackerCategoryCoreData.title), title)
         fetch.fetchLimit = 1
         if let existing = try context.fetch(fetch).first {
+            if existing.value(forKey: "id") == nil {
+                existing.setValue(UUID(), forKey: "id")
+            }
             return existing
         }
         let entity = NSEntityDescription.insertNewObject(forEntityName: "TrackerCategoryCoreData", into: context)
+        entity.setValue(UUID(), forKey: "id")
         entity.setValue(title, forKey: "title")
         try context.save()
         return entity

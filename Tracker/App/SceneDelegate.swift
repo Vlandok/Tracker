@@ -8,7 +8,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         guard let scene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: scene)
-        window?.rootViewController = MainTabBarController()
+        
+        let hasSeenOnboarding = UserDefaults.standard.bool(forKey: OnboardingStorage.hasSeenOnboardingKey)
+        window?.rootViewController = hasSeenOnboarding ? MainTabBarController() : OnboardingPageViewController()
         window?.makeKeyAndVisible()
     }
 }
